@@ -1,0 +1,119 @@
+package com.pacheco.mee_4;
+
+import java_cup.runtime.*;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.lang.Object;
+import java.util.*;
+import java_cup.runtime.Symbol;
+
+parser code {:
+    class Variable {
+        public String type;
+        public Object value;
+        public Variable(String t, Object v) {
+            type = t;
+            value = v;
+        }
+    }
+
+    protected Lexer lexer;
+    private HashMap<String, Variable> symT;
+    private FileInputStream fis;
+
+    public Parser(String filename) {
+        symT = new HashMap<String,Variable>();
+        File file = new File(filename);
+        try {
+            fis = new FileInputStream(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void print(Object o) {
+        System.out.println(o);
+    }
+
+    private void register(String type, String name, String value) {
+        symT.put(name, new Variable(type, value));
+    }
+
+    private Object getValue(String name) {
+        return symT.get(name).value;
+    }
+
+    private void atrib(String name, Object value) {
+        Variable v = symT.get(name);
+        v.value = value;
+        symT.put(name, v);
+    }
+:};
+
+init with {:
+    ComplexSymbolFactory f = new ComplexSymbolFactory();
+    symbolFactory = f;
+    lexer = new Lexer(f,fis);
+:};
+
+scan with {: return lexer.yylex(); :};
+
+terminal Double NUMBER;
+terminal String TYPE;
+terminal String ID;
+terminal        ADD;
+terminal        MINUS;
+terminal        MULT;
+terminal        DIV;
+terminal        POW;
+terminal        L_BRACKET;
+terminal        R_BRACKET;
+terminal        SC;
+terminal        EQ;
+terminal        PRINT;
+
+non terminal S;
+non terminal COMMANDS;
+non terminal COMMAND;
+non terminal ATRIB;
+non terminal NUM;
+non terminal EXP;
+non terminal PRINT_CMD;
+non terminal DECL;
+
+precedence left ADD, MINUS;
+precedence left MULT, DIV;
+precedence left POW;
+
+S ::= COMMANDS
+    ;
+
+COMMANDS ::= COMMAND COMMANDS
+          |
+          ;
+
+COMMAND ::= ATRIB SC
+           | PRINT_CMD SC
+           | DECL SC
+           ;
+
+DECL ::= TYPE:t ID:id        {: register(t, id, null); :}
+        ;
+
+ATRIB ::= ID:id EQ EXP:e       {: atrib(id, e); :}
+        ;
+
+PRINT_CMD ::= PRINT EXP:e {: print(e); :};
+
+EXP ::= NUM:n                   {: RESULT = n; :}
+      | ID:id                   {: RESULT = getValue(id); :}
+      | L_BRACKET EXP:e R_BRACKET {: RESULT = e; :}
+      | EXP:e1 ADD EXP:e2       {: RESULT = (Double)e1 + (Double)e2; :}
+      | EXP:e1 MINUS EXP:e2     {: RESULT = (Double)e1 - (Double)e2; :}
+      | EXP:e1 DIV EXP:e2       {: RESULT = (Double)e1 / (Double)e2; :}
+      | EXP:e1 MULT EXP:e2      {: RESULT = (Double)e1 * (Double)e2; :}
+      | EXP:e1 POW EXP:e2       {: RESULT = Math.pow((Double)e1, (Double)e2); :}
+      ;
+
+NUM ::= NUMBER:n        {: RESULT = n; :};

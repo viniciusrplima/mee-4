@@ -1,0 +1,4 @@
+real V;
+V = 2 ** 3;
+print V;
+print 14.88;
