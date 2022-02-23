@@ -45,6 +45,7 @@ space   = [ \t\n]
 letter  = [_a-zA-Z]
 id      = {letter}({letter}|{digit})*
 type    = (real|int|str|bool)
+rel_op  = (==|\!=|<|>|<=|>=)
 
 %eofval{
     return symbolFactory.newSymbol("EOF",sym.EOF);
@@ -66,6 +67,7 @@ type    = (real|int|str|bool)
 "("         { return symbol("L_BRACKET", sym.L_BRACKET); }
 ")"         { return symbol("R_BRACKET", sym.R_BRACKET); }
 ";"         { return symbol("SEMI COLON", sym.SC); }
+{rel_op}    { return symbol("REL_OP", sym.REL_OP, yytext()); }
 "="         { return symbol("EQUAL", sym.EQ); }
 "print"     { return symbol("PRINT", sym.PRINT); }
 {type}      { return symbol("TYPE", sym.TYPE, yytext()); }

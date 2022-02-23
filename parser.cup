@@ -129,6 +129,7 @@ parser code {:
         symT.put(name, newVal);
     }
     
+    // arithmetic operations
     private Value aritOp(Value v1, Value v2, String op, AritFunc<Double> realOp, 
         AritFunc<Integer> intOp) {
 
@@ -145,8 +146,8 @@ parser code {:
 
     private Value add(Value v1, Value v2) {
         return aritOp(v1, v2, "+", 
-            (a, b) -> (a + b), 
-            (a, b) -> (a + b));
+            (a, b) -> (a + b),  // double function
+            (a, b) -> (a + b)); // integer function
     }
 
     private Value subtract(Value v1, Value v2) {
@@ -190,6 +191,41 @@ parser code {:
             error("the operator 'not' cannot be applied to '%s'", v.type);
         return new Value(T_BOOL, !(Boolean)v.value);
     }
+
+    private boolean checkEqualityTypes(String t1, String t2) {
+        // TODO: real must can be compared with int
+        return t1.equals(t2);
+    }
+
+    private boolean checkCompareTypes(String t1, String t2) {
+        boolean valid = false;
+        if ((t1.equals(T_REAL) || t1.equals(T_INT)) &&
+            (t2.equals(T_REAL) || t2.equals(T_INT))) {
+            valid = true;
+        }
+        return valid;
+    }
+    
+    private Value relOp(Value v1, Value v2, String op) {
+        boolean result = false;
+        if (op.equals("==") || op.equals("!=")) {
+            if (!checkEqualityTypes(v1.type, v2.type))
+                error("the operator '%s' cannot not be applied to '%s' and '%s'", op, v1.type, v2.type);
+            if (op.equals("==")) result = v1.value == v2.value;
+            else result = v1.value != v2.value;
+        }
+        if (op.equals("<") || op.equals(">") || op.equals("<=") || op.equals(">=")) {
+            if (!checkCompareTypes(v1.type, v2.type))
+                error("the operator '%s' cannot not be applied to '%s' and '%s'", op, v1.type, v2.type);
+            double doubleVal1 = ((Number)v1.value).doubleValue();
+            double doubleVal2 = ((Number)v2.value).doubleValue();
+            if (op.equals("<")) result = doubleVal1 < doubleVal2;
+            if (op.equals(">")) result = doubleVal1 > doubleVal2;
+            if (op.equals("<=")) result = doubleVal1 <= doubleVal2;
+            if (op.equals(">=")) result = doubleVal1 >= doubleVal2;
+        }
+        return new Value(T_BOOL, result);
+    }
 :};
 
 init with {:
@@ -202,27 +238,28 @@ scan with {:
     /*Symbol s = lexer.yylex();
     print(s);
     return s;*/
-    return lexer.yylex(); 
+    return lexer.yylex();
 :};
 
-terminal Double REAL;
-terminal Integer INT;
-terminal Boolean BOOL;
-terminal String TYPE;
-terminal String ID;
-terminal        ADD;
-terminal        MINUS;
-terminal        MULT;
-terminal        DIV;
-terminal        POW;
-terminal        OR;
-terminal        AND;
-terminal        NOT;
-terminal        L_BRACKET;
-terminal        R_BRACKET;
-terminal        SC;
-terminal        EQ;
-terminal        PRINT;
+terminal Double     REAL;
+terminal Integer    INT;
+terminal Boolean    BOOL;
+terminal String     TYPE;
+terminal String     ID;
+terminal            ADD;
+terminal            MINUS;
+terminal            MULT;
+terminal            DIV;
+terminal            POW;
+terminal            OR;
+terminal            AND;
+terminal            NOT;
+terminal String     REL_OP;
+terminal            L_BRACKET;
+terminal            R_BRACKET;
+terminal            SC;
+terminal            EQ;
+terminal            PRINT;
 
 non terminal        S;
 non terminal        COMMANDS;
@@ -236,6 +273,7 @@ non terminal        DECL;
 
 precedence left OR;
 precedence left AND;
+precedence left REL_OP;
 precedence left ADD, MINUS;
 precedence left MULT, DIV;
 precedence left POW;
@@ -248,16 +286,12 @@ COMMANDS ::= COMMAND COMMANDS
           ;
 
 COMMAND ::= ATRIB SC
-           | PRINT_CMD SC
-           | DECL SC
-           ;
+          | PRINT_CMD SC
+          | DECL SC
+          ;
 
-DECL ::= TYPE:t ID:id           {: register(t, id); :}
-        ;
-
-ATRIB ::= ID:id EQ EXP:e        {: atrib(id, e); :}
-        ;
-
+DECL ::= TYPE:t ID:id           {: register(t, id); :};
+ATRIB ::= ID:id EQ EXP:e        {: atrib(id, e); :};
 PRINT_CMD ::= PRINT EXP:e       {: print(e); :};
 
 EXP ::= NUM:n                   {: RESULT = n; :}
@@ -271,6 +305,7 @@ EXP ::= NUM:n                   {: RESULT = n; :}
       | EXP:e1 POW EXP:e2       {: RESULT = power(e1, e2); :}
       | EXP:e1 AND EXP:e2       {: RESULT = and(e1, e2); :}
       | EXP:e1 OR EXP:e2        {: RESULT = or(e1, e2); :}
+      | EXP:e1 REL_OP:op EXP:e2 {: RESULT = relOp(e1, e2, op); :}
       | NOT EXP:e               {: RESULT = not(e); :}
       ;
 

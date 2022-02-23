@@ -5,6 +5,17 @@ V = 2 + 3.5 - 1.5 + 2 ** 1.5;
 B = True and False;
 B = not B;
 
+real A;
+real C;
+
+A = 5;
+C = 5;
+
 print V;
 print B;
+print A == C;
+print A != C;
+print A > 3;
+print A < 3;
+print A >= 5;
 print 14.88;
