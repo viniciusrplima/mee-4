@@ -9,6 +9,7 @@ import java.util.*;
 import java.lang.*;
 import java_cup.runtime.Symbol;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 parser code {:
 
@@ -55,15 +56,30 @@ parser code {:
     }
 
     private void print(Value v) {
+        System.out.println(valueToString(v));
+    }
+
+    private String valueToString(Value v) {
+        String result = "";
         if (v.type.equals(T_BOOL)) {
-            String res = "";
-            if ((Boolean) v.value) res = "True";
-            else res = "False";
-            System.out.println(res);
+            if ((Boolean) v.value) result = "True";
+            else result = "False";
         }
         else {
-            System.out.println(v.value);
+            result = v.value.toString();
         }
+        return result;
+    }
+
+    private void print(Value format, List<Value> args) {
+        List<String> strArgs = args.stream()
+            .map(v -> valueToString(v))
+            .collect(Collectors.toList());
+        String text = (String)format.value;
+        for (String arg : strArgs) {
+            text = text.replaceFirst("%", arg);
+        }
+        System.out.println(text);
     }
 
     private void register(String type, String name) {
@@ -244,6 +260,7 @@ scan with {:
 terminal Double     REAL;
 terminal Integer    INT;
 terminal Boolean    BOOL;
+terminal String     STR;
 terminal String     TYPE;
 terminal String     ID;
 terminal            ADD;
@@ -268,7 +285,10 @@ non terminal        ATRIB;
 non terminal Value  NUM;
 non terminal Value  EXP;
 non terminal Value  BOOLEAN;
+non terminal Value  STRING;
+non terminal List<Value> PRINT_ARGS;
 non terminal        PRINT_CMD;
+non terminal        PRINT_PARAMS;
 non terminal        DECL;
 
 precedence left OR;
@@ -292,7 +312,15 @@ COMMAND ::= ATRIB SC
 
 DECL ::= TYPE:t ID:id           {: register(t, id); :};
 ATRIB ::= ID:id EQ EXP:e        {: atrib(id, e); :};
-PRINT_CMD ::= PRINT EXP:e       {: print(e); :};
+PRINT_CMD ::= PRINT PRINT_PARAMS;
+
+PRINT_PARAMS ::= STRING:s PRINT_ARGS:args {: print(s, args); :}
+               | EXP:e                    {: print(e); :}
+               ;
+
+PRINT_ARGS ::= EXP:e PRINT_ARGS:args {: args.add(e); RESULT = args; :}
+             |                       {: RESULT = new ArrayList<Value>(); :}
+             ;
 
 EXP ::= NUM:n                   {: RESULT = n; :}
       | ID:id                   {: RESULT = getValue(id); :}
@@ -309,8 +337,10 @@ EXP ::= NUM:n                   {: RESULT = n; :}
       | NOT EXP:e               {: RESULT = not(e); :}
       ;
 
-NUM ::= REAL:n        {: RESULT = new Value(T_REAL, n); :}
-      | INT:n         {: RESULT = new Value(T_INT, n); :}
+NUM ::= REAL:n          {: RESULT = new Value(T_REAL, n); :}
+      | INT:n           {: RESULT = new Value(T_INT, n); :}
       ;
 
-BOOLEAN ::= BOOL:b    {: RESULT = new Value(T_BOOL, b); :};
+BOOLEAN ::= BOOL:b      {: RESULT = new Value(T_BOOL, b); :};
+
+STRING ::= STR:s        {: RESULT = new Value(T_STR, s); :};

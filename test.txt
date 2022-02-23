@@ -13,9 +13,4 @@ C = 5;
 
 print V;
 print B;
-print A == C;
-print A != C;
-print A > 3;
-print A < 3;
-print A >= 5;
-print 14.88;
+print "vars: %, %, %, %" V A B C;

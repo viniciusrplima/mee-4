@@ -41,6 +41,7 @@ digit   = [0-9]
 int     = {digit}+
 real    = {digit}+\.{digit}+
 bool    = (True|False)
+str     = \".*\"
 space   = [ \t\n]
 letter  = [_a-zA-Z]
 id      = {letter}({letter}|{digit})*
@@ -56,6 +57,7 @@ rel_op  = (==|\!=|<|>|<=|>=)
 {int}       { return symbol("INT", sym.INT, Integer.valueOf(yytext())); }
 {real}      { return symbol("REAL", sym.REAL, Double.valueOf(yytext())); }
 {bool}      { return symbol("BOOL", sym.BOOL, boolValue(yytext())); }
+{str}       { return symbol("STRING", sym.STR, yytext().replace("\"", "")); }
 "+"         { return symbol("ADD", sym.ADD); }
 "-"         { return symbol("MINUS", sym.MINUS); }
 "*"         { return symbol("MULT", sym.MULT); }
