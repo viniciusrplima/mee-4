@@ -59,6 +59,9 @@ type    = (real|int|str|bool)
 "-"         { return symbol("MINUS", sym.MINUS); }
 "*"         { return symbol("MULT", sym.MULT); }
 "/"         { return symbol("DIV", sym.DIV); }
+"and"       { return symbol("AND", sym.AND); }
+"or"        { return symbol("OR", sym.OR); }
+"not"       { return symbol("NOT", sym.NOT); }
 "**"        { return symbol("POW", sym.POW); }
 "("         { return symbol("L_BRACKET", sym.L_BRACKET); }
 ")"         { return symbol("R_BRACKET", sym.R_BRACKET); }

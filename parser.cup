@@ -69,7 +69,7 @@ parser code {:
     private void register(String type, String name) {
         // defining default values
         Object defaultVal = null;
-        if (type.equals(T_BOOL)) defaultVal = true;
+        if (type.equals(T_BOOL)) defaultVal = false;
         register(type, name, defaultVal);
     }
 
@@ -113,6 +113,12 @@ parser code {:
         boolean valid = false;
         if (t1.equals(t2)) valid = true;
         if (t1.equals(T_REAL) && t2.equals(T_INT)) valid = true;
+        return valid;
+    }
+
+    private boolean checkBoolTypes(String t1, String t2) {
+        boolean valid = false;
+        if (t1.equals(T_BOOL) && t2.equals(T_BOOL)) valid = true;
         return valid;
     }
 
@@ -166,6 +172,24 @@ parser code {:
             (a, b) -> (Math.pow(a, b)), 
             (a, b) -> Double.valueOf(Math.pow(a, b)).intValue());
     }
+
+    private Value and(Value v1, Value v2) {
+        if (!checkBoolTypes(v1.type, v2.type))
+            error("the operator 'and' cannot be applied to '%s' and '%s'", v1.type, v2.type);
+        return new Value(T_BOOL, ((Boolean)v1.value) && ((Boolean)v2.value));
+    }
+
+    private Value or(Value v1, Value v2) {
+        if (!checkBoolTypes(v1.type, v2.type))
+            error("the operator 'or' cannot be applied to '%s' and '%s'", v1.type, v2.type);
+        return new Value(T_BOOL, ((Boolean)v1.value) || ((Boolean)v2.value));
+    }
+
+    private Value not(Value v) {
+        if (!v.type.equals(T_BOOL))
+            error("the operator 'not' cannot be applied to '%s'", v.type);
+        return new Value(T_BOOL, !(Boolean)v.value);
+    }
 :};
 
 init with {:
@@ -191,6 +215,9 @@ terminal        MINUS;
 terminal        MULT;
 terminal        DIV;
 terminal        POW;
+terminal        OR;
+terminal        AND;
+terminal        NOT;
 terminal        L_BRACKET;
 terminal        R_BRACKET;
 terminal        SC;
@@ -207,6 +234,8 @@ non terminal Value  BOOLEAN;
 non terminal        PRINT_CMD;
 non terminal        DECL;
 
+precedence left OR;
+precedence left AND;
 precedence left ADD, MINUS;
 precedence left MULT, DIV;
 precedence left POW;
@@ -240,6 +269,9 @@ EXP ::= NUM:n                   {: RESULT = n; :}
       | EXP:e1 DIV EXP:e2       {: RESULT = divide(e1, e2); :}
       | EXP:e1 MULT EXP:e2      {: RESULT = multiply(e1, e2); :}
       | EXP:e1 POW EXP:e2       {: RESULT = power(e1, e2); :}
+      | EXP:e1 AND EXP:e2       {: RESULT = and(e1, e2); :}
+      | EXP:e1 OR EXP:e2        {: RESULT = or(e1, e2); :}
+      | NOT EXP:e               {: RESULT = not(e); :}
       ;
 
 NUM ::= REAL:n        {: RESULT = new Value(T_REAL, n); :}
