@@ -6,24 +6,37 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.lang.Object;
 import java.util.*;
+import java.lang.*;
 import java_cup.runtime.Symbol;
+import java.util.function.Function;
 
 parser code {:
-    class Variable {
+
+    private static final String T_REAL = "real";
+    private static final String T_INT = "int";
+    private static final String T_STR = "str";
+    private static final String T_BOOL = "bool";
+
+    @FunctionalInterface
+    public interface AritFunc<T> {
+        public T apply(T a, T b);
+    }
+
+    class Value {
         public String type;
         public Object value;
-        public Variable(String t, Object v) {
+        public Value(String t, Object v) {
             type = t;
             value = v;
         }
     }
 
     protected Lexer lexer;
-    private HashMap<String, Variable> symT;
+    private HashMap<String, Value> symT;
     private FileInputStream fis;
 
     public Parser(String filename) {
-        symT = new HashMap<String,Variable>();
+        symT = new HashMap<String,Value>();
         File file = new File(filename);
         try {
             fis = new FileInputStream(file);
@@ -32,22 +45,126 @@ parser code {:
         }
     }
 
+    private void error(String message, Object... args) {
+        System.out.println(String.format("ERRO: " + message, args));
+        System.exit(1);
+    }
+
     private void print(Object o) {
         System.out.println(o);
     }
 
-    private void register(String type, String name, String value) {
-        symT.put(name, new Variable(type, value));
+    private void print(Value v) {
+        if (v.type.equals(T_BOOL)) {
+            String res = "";
+            if ((Boolean) v.value) res = "True";
+            else res = "False";
+            System.out.println(res);
+        }
+        else {
+            System.out.println(v.value);
+        }
     }
 
-    private Object getValue(String name) {
-        return symT.get(name).value;
+    private void register(String type, String name) {
+        // defining default values
+        Object defaultVal = null;
+        if (type.equals(T_BOOL)) defaultVal = true;
+        register(type, name, defaultVal);
     }
 
-    private void atrib(String name, Object value) {
-        Variable v = symT.get(name);
-        v.value = value;
-        symT.put(name, v);
+    // register new variables
+    private void register(String type, String name, Object value) {
+        symT.put(name, new Value(type, value));
+    }
+
+    private Value getValue(String name) {
+        if (!symT.containsKey(name)) {
+            error("variable '%s' is not declared", name);
+        }
+        return symT.get(name);
+    }
+
+    private int typeValue(String t1) {
+        if (t1.equals(T_STR)) return 1000;
+        if (t1.equals(T_REAL)) return 999;
+        if (t1.equals(T_INT)) return 998;
+        if (t1.equals(T_BOOL)) return 997;
+        return 9999;
+    }
+
+    private String maxType(String t1, String t2) {
+        int t1val = typeValue(t1);
+        int t2val = typeValue(t2);
+        if (t1val > t2val) return t1;
+        else return t2;
+    }
+
+    private boolean checkAritTypes(String t1, String t2) {
+        boolean valid = false;
+        if ((t1.equals(T_REAL) || t1.equals(T_INT)) &&
+            (t2.equals(T_REAL) || t2.equals(T_INT))) {
+                valid = true;
+        }
+        return valid;
+    }
+
+    private boolean checkAtribTypes(String t1, String t2) {
+        boolean valid = false;
+        if (t1.equals(t2)) valid = true;
+        if (t1.equals(T_REAL) && t2.equals(T_INT)) valid = true;
+        return valid;
+    }
+
+    private void atrib(String name, Value newVal) {
+        Value oldVal = getValue(name);
+        if(!checkAtribTypes(oldVal.type, newVal.type))
+            error("cannot convert '%s' to '%s'", newVal.type, oldVal.type);
+        symT.put(name, newVal);
+    }
+    
+    private Value aritOp(Value v1, Value v2, String op, AritFunc<Double> realOp, 
+        AritFunc<Integer> intOp) {
+
+        if(!checkAritTypes(v1.type, v2.type))
+            error("the operator '%s' connot be applied to '%s' and '%s'", op, v1.type, v2.type);
+        String type = maxType(v1.type, v2.type);
+        Object value = null;
+        if (type.equals(T_REAL)) 
+            value = realOp.apply(((Number)v1.value).doubleValue(), ((Number)v2.value).doubleValue());
+        else
+            value = intOp.apply(((Number)v1.value).intValue(), ((Number)v2.value).intValue());
+        return new Value(type, value);
+    }
+
+    private Value add(Value v1, Value v2) {
+        return aritOp(v1, v2, "+", 
+            (a, b) -> (a + b), 
+            (a, b) -> (a + b));
+    }
+
+    private Value subtract(Value v1, Value v2) {
+        return aritOp(v1, v2, "-", 
+            (a, b) -> (a - b), 
+            (a, b) -> (a - b));
+    }
+
+    private Value divide(Value v1, Value v2) {
+        return aritOp(v1, v2, "/", 
+            (a, b) -> (a / b), 
+            (a, b) -> (a / b));
+    }
+
+    private Value multiply(Value v1, Value v2) {
+        return aritOp(v1, v2, "*", 
+            (a, b) -> (a * b), 
+            (a, b) -> (a * b));
+    }
+
+    private Value power(Value v1, Value v2) {
+        return aritOp(v1, v2, "**", 
+            (a, b) -> (Math.pow(a, b)), 
+            (a, b) -> Double.valueOf(Math.pow(a, b)).intValue());
     }
 :};
 
@@ -57,9 +174,16 @@ init with {:
     lexer = new Lexer(f,fis);
 :};
 
-scan with {: return lexer.yylex(); :};
+scan with {: 
+    /*Symbol s = lexer.yylex();
+    print(s);
+    return s;*/
+    return lexer.yylex(); 
+:};
 
-terminal Double NUMBER;
+terminal Double REAL;
+terminal Integer INT;
+terminal Boolean BOOL;
 terminal String TYPE;
 terminal String ID;
 terminal        ADD;
@@ -73,14 +197,15 @@ terminal        SC;
 terminal        EQ;
 terminal        PRINT;
 
-non terminal S;
-non terminal COMMANDS;
-non terminal COMMAND;
-non terminal ATRIB;
-non terminal NUM;
-non terminal EXP;
-non terminal PRINT_CMD;
-non terminal DECL;
+non terminal        S;
+non terminal        COMMANDS;
+non terminal        COMMAND;
+non terminal        ATRIB;
+non terminal Value  NUM;
+non terminal Value  EXP;
+non terminal Value  BOOLEAN;
+non terminal        PRINT_CMD;
+non terminal        DECL;
 
 precedence left ADD, MINUS;
 precedence left MULT, DIV;
@@ -98,22 +223,27 @@ COMMAND ::= ATRIB SC
            | DECL SC
            ;
 
-DECL ::= TYPE:t ID:id        {: register(t, id, null); :}
+DECL ::= TYPE:t ID:id           {: register(t, id); :}
         ;
 
-ATRIB ::= ID:id EQ EXP:e       {: atrib(id, e); :}
+ATRIB ::= ID:id EQ EXP:e        {: atrib(id, e); :}
         ;
 
-PRINT_CMD ::= PRINT EXP:e {: print(e); :};
+PRINT_CMD ::= PRINT EXP:e       {: print(e); :};
 
 EXP ::= NUM:n                   {: RESULT = n; :}
       | ID:id                   {: RESULT = getValue(id); :}
+      | BOOLEAN:b               {: RESULT = b; :}
       | L_BRACKET EXP:e R_BRACKET {: RESULT = e; :}
-      | EXP:e1 ADD EXP:e2       {: RESULT = (Double)e1 + (Double)e2; :}
-      | EXP:e1 MINUS EXP:e2     {: RESULT = (Double)e1 - (Double)e2; :}
-      | EXP:e1 DIV EXP:e2       {: RESULT = (Double)e1 / (Double)e2; :}
-      | EXP:e1 MULT EXP:e2      {: RESULT = (Double)e1 * (Double)e2; :}
-      | EXP:e1 POW EXP:e2       {: RESULT = Math.pow((Double)e1, (Double)e2); :}
+      | EXP:e1 ADD EXP:e2       {: RESULT = add(e1, e2); :}
+      | EXP:e1 MINUS EXP:e2     {: RESULT = subtract(e1, e2); :}
+      | EXP:e1 DIV EXP:e2       {: RESULT = divide(e1, e2); :}
+      | EXP:e1 MULT EXP:e2      {: RESULT = multiply(e1, e2); :}
+      | EXP:e1 POW EXP:e2       {: RESULT = power(e1, e2); :}
       ;
 
-NUM ::= NUMBER:n        {: RESULT = n; :};
+NUM ::= REAL:n        {: RESULT = new Value(T_REAL, n); :}
+      | INT:n         {: RESULT = new Value(T_INT, n); :}
+      ;
+
+BOOLEAN ::= BOOL:b    {: RESULT = new Value(T_BOOL, b); :};

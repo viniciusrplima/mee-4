@@ -30,14 +30,21 @@ import java.io.InputStream;
     public Symbol symbol(String name, int type, Object value) {
         return symbolFactory.newSymbol(name, type, value);
     }
+
+    public Boolean boolValue(String val) {
+        if (val.equals("True")) return true;
+        else return false;
+    }
 %}
 
 digit   = [0-9]
-number  = {digit}+(.{digit}+)?
+int     = {digit}+
+real    = {digit}+\.{digit}+
+bool    = (True|False)
 space   = [ \t\n]
 letter  = [_a-zA-Z]
 id      = {letter}({letter}|{digit})*
-type    = (real)
+type    = (real|int|str|bool)
 
 %eofval{
     return symbolFactory.newSymbol("EOF",sym.EOF);
@@ -45,7 +52,9 @@ type    = (real)
 
 %%
 
-{number}    { return symbol("NUMBER", sym.NUMBER, Double.valueOf(yytext())); }
+{int}       { return symbol("INT", sym.INT, Integer.valueOf(yytext())); }
+{real}      { return symbol("REAL", sym.REAL, Double.valueOf(yytext())); }
+{bool}      { return symbol("BOOL", sym.BOOL, boolValue(yytext())); }
 "+"         { return symbol("ADD", sym.ADD); }
 "-"         { return symbol("MINUS", sym.MINUS); }
 "*"         { return symbol("MULT", sym.MULT); }

@@ -1,4 +1,9 @@
 real V;
-V = 2 ** 3;
+bool B;
+
+V = 2 + 3.5 - 1.5 + 2 ** 1.5;
+
 print V;
+print B;
+print 5 ** 2;
 print 14.88;

@@ -1,6 +1,5 @@
 package com.pacheco.mee_4;
 
-
 public class Main {
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
